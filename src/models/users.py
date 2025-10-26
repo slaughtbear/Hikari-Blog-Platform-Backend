@@ -19,6 +19,12 @@ class UserCreate(BaseModel):
     password: str = Field(...)
     disabled: bool = False
 
+class UserSignUp(BaseModel):
+    username: str = Field(..., min_length=6, max_length=15)
+    full_name: str = Field(..., min_length=6, max_length=128)
+    email: EmailStr = Field(..., min_length=6, max_length=254)
+    password: str = Field(...)
+
 class UserUpdate(BaseModel):
     username: str | None = Field(None, min_length=6, max_length=15)
     full_name: str | None = Field(None, min_length=6, max_length=128)
