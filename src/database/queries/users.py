@@ -18,7 +18,7 @@ async def get_users() -> list[dict]:
 
     return users_list
 
-async def get_user(field: str, key):
+async def get_user(field: str, key: Any):
     return await users_collection.find_one({field: key})
 
 async def patch_user(id: str, user_data: dict) -> dict[str, Any]:
