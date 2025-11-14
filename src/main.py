@@ -21,3 +21,9 @@ app.include_router(
     prefix="/api/v1/users",
     tags=["Users"]
 )
+
+app.include_router(
+    router=tags_router,
+    prefix="/api/v1/tags",
+    tags=["Tags"]
+)
