@@ -1,15 +1,23 @@
-from datetime import datetime # Librería para trabajar con fechas y horas
+from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, Depends, status # FastAPI
+from bson import ObjectId
+from fastapi import APIRouter, HTTPException, Depends, status
 
-from src.models.users import User # Modelo de usuario
-from src.models.tags import Tag, TagUpdate, TagCreate # Modelos de etiquetas
+from src.authentication.authentication import get_current_user, is_admin
 
-from src.authentication.jwt_auth import get_current_user, is_admin # Dependencia validadora del rol admin
+from src.models.users import User
+from src.models.tags import Tag, TagUpdate, TagCreate
 
-from src.database.queries.tags_queries import * # Operaciones a la base de datos
+from src.schemas.tags import tag_schema
 
-from src.schemas.tags import tag_schema # Serializador de datos
+from src.database.database import tags
+from src.database.queries import (
+    create_document,
+    read_documents,
+    update_document,
+    delete_document,
+    search_document,
+)
 
 
 router = APIRouter()
@@ -29,13 +37,13 @@ async def create_tag(data: TagCreate, current_user: is_admin) -> Tag:
         Tag: Etiqueta creada.
     '''
     try:
-        response = await add_tag({
-            "name": data.name, # Nombre
-            "slug": data.name.lower().replace(" ", "-"), # Slug
-            "created_by": current_user.username, # Creado por
-            "updated_by": None, # Actualizado por 
-            "created_at": datetime.now(), # Fecha de creación
-            "updated_at": None # Fecha de actualización por defecto
+        response = await create_document(tags, {
+            "name": data.name,
+            "slug": data.name.lower().replace(" ", "-"),
+            "created_by": current_user.username,
+            "updated_by": None,
+            "created_at": datetime.now(),
+            "updated_at": None
         })
 
         return tag_schema(response)
@@ -60,7 +68,7 @@ async def read_tags(current_user: User = Depends(get_current_user)) -> list[Tag]
         list (Tag): Lista de etiquetas.
     '''
     try:
-        return [tag_schema(document) for document in await get_tags()]
+        return [tag_schema(document) for document in await read_documents(tags)]
     
     except Exception:
         raise HTTPException(
@@ -82,22 +90,15 @@ async def search_tag(id: str, current_user: User = Depends(get_current_user)) ->
     Returns:
         Tag: Etiqueta buscada.
     '''
-    try:
-        response = await get_tag(field="_id", key=id)
+    response = await search_document(collection=tags, field="_id", key=ObjectId(id))
 
-        if not response:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="No se encontró la etiqueta..."
-            )
-        
-        return tag_schema(response)
-    
-    except Exception:
+    if not response:
         raise HTTPException(
-            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail = "Ha ocurrido un error en el servidor, inténtelo más tarde..."
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No se encontró la etiqueta..."
         )
+        
+    return tag_schema(response)
 
 
 @router.patch("/{id}", response_model = Tag)
@@ -115,7 +116,7 @@ async def update_tag(id: str, data: TagUpdate, current_user: is_admin) -> Tag:
         User: Etiqueta actualizada.
     """
     try:
-        response = await patch_tag(id, {
+        response = await update_document(tags, id, {
             "name": data.name,
             "slug": data.name.lower().replace(" ", "-"),
             "updated_by": current_user.username,
@@ -130,7 +131,8 @@ async def update_tag(id: str, data: TagUpdate, current_user: is_admin) -> Tag:
         
         return tag_schema(response)
     
-    except Exception:
+    except Exception as error:
+        print(error)
         raise HTTPException(
             status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail = "Ha ocurrido un error en el servidor, inténtelo más tarde..."
@@ -144,9 +146,10 @@ async def delete_tag(id: str, current_user: is_admin) -> None:
 
     Args:
         id (str): ID de la etiqueta.
-        current_user (is_admin): Dependencia para validar el rol de admin.
+        current_user (User): Dependencia de FastAPI para validar que un usuario
+                             autenticado está realizando la solicitud.
     """
-    response = await del_tag(id)
+    response = await delete_document(tags, id)
 
     if not response:
         raise HTTPException(
