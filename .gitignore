@@ -1,4 +1,15 @@
-venv
+# Entorno virtual de Python
+/venv
+
+# Archivos de caché
 __pycache__
+*.pyc
+
+# Archivos de configuración local y secretos
 .env
+.env.*
+secrets.json
 documentación.md
+
+# Cache de Pytest
+.pytest_cache/
