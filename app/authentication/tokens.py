@@ -1,18 +1,16 @@
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any
-
+from fastapi import HTTPException, status, Depends
+from fastapi.security import OAuth2PasswordBearer
 from jose import jwt
 from jose.exceptions import JWTError
 
-from fastapi import HTTPException, status, Depends
-from fastapi.security import OAuth2PasswordBearer
-
-from src.authentication.security import verify_password
-from src.config import settings
-from src.database.database import users
-from src.database.queries import search_document
-from src.models.users import User
-from src.schemas.users import user_schema
+from app.authentication.security import verify_password
+from app.db.database import users
+from app.core.config import settings
+from app.models.users import User
+from app.schemas.users import user_schema
+from app.services.services import search_document
 
 
 SECRET_KEY = settings.SECRET_KEY
@@ -148,16 +146,6 @@ def check_admin(user: User = Depends(get_current_user)):
         )
     
     return user
-    
-is_admin = Annotated[User, Depends(check_admin)] # Dependencia
 
-if __name__ == "__main__":
-    user_data = {"sub": "admin"}
-    token = create_access_token(user_data)
-    print(f"Token generado:\n{token}\n")
-
-    try:
-        decoded = decode_token(token)
-        print(f"Token decodificado:\n{decoded}\n")
-    except Exception as e:
-        print(str(e))
+# Dependencias
+is_admin = Annotated[User, Depends(check_admin)] 

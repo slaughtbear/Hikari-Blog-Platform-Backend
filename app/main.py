@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from src.routes import *
+from app.api import *
 
 app = FastAPI(
     title="Hikari Blog Backend",
@@ -26,4 +26,11 @@ app.include_router(
     router=tags_router,
     prefix="/api/v1/tags",
     tags=["Tags"]
+)
+
+
+app.include_router(
+    router=categories_router,
+    prefix="/api/v1/categories",
+    tags=["Categories"]
 )
