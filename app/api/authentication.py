@@ -5,6 +5,8 @@ from pymongo.errors import DuplicateKeyError
 from app.authentication.tokens import authenticate_user, create_access_token
 from app.authentication.security import hash_password
 
+from app.core.logging import configure_logger
+
 from app.db.database import users
 
 from app.models.users import User, UserSignUp
@@ -15,6 +17,7 @@ from app.schemas.users import user_schema
 from app.services.services import create_document
 
 
+logger = configure_logger(logger_name=__name__)
 router = APIRouter()
 
 
@@ -34,23 +37,36 @@ async def signin(form_data: OAuth2PasswordRequestForm = Depends()) -> dict[str, 
     Returns:
         dict (str, str): Token de acceso.
     """
+    logger.info("Iniciando petición POST en /signin/.")
+
     try:
+        logger.debug("Intentando autenticar al usuario en la aplicación...")
         user = await authenticate_user(form_data.username, form_data.password)
 
         if not user:
+            logger.warning('La autenticación ha fallado.')
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Usuario o contraseña incorrecta..."
+                detail="Usuario o contraseña incorrecta, intente de nuevo."
             )
         
-        access_token = create_access_token(data={"sub": user["username"]})
+        logger.info(f'Usuario autenticado correctamente.')
 
+        logger.debug("Generando token de acceso...")
+        access_token = create_access_token(data={"sub": user["username"]})
+        logger.info(f'Token de acceso generado correctamente.')
+
+        logger.info("Petición POST en /signin/ finalizada éxitosamente.")
         return {
             "access_token": access_token,
             "token_type": "bearer"
         }
     
+    except HTTPException:
+        raise
+    
     except Exception:
+        logger.error("Error crítico en el proceso de autenticación.", exc_info=True)
         raise HTTPException(
             status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail = "Ha ocurrido un error en el servidor, inténtelo más tarde..."
@@ -73,7 +89,10 @@ async def signup(data: UserSignUp) -> User:
     Returns:
         User: El objeto de usuario recién creado.
     """
+    logger.info("Iniciando petición POST en /signup/.")
+
     try:
+        logger.debug(f'Intentando registrar el usuario "{data.username}"...')
         response = await create_document(
             collection = users, 
             data = {
@@ -86,15 +105,23 @@ async def signup(data: UserSignUp) -> User:
             }
         )
 
+        logger.info(
+            "Usuario registrado correctamente | username=%s | id_user=%s",
+            response["username"],
+            response["_id"],
+        )
+
         return user_schema(response)
     
     except DuplicateKeyError:
+        logger.warning("El registro ha fallado, nombre de usuario o correo electrónico se encuentran en uso.")
         raise HTTPException(
             status_code = status.HTTP_409_CONFLICT,
             detail = "El nombre de usuario o correo electrónico ya están en uso."
         )
     
     except Exception:
+        logger.error("Error crítico en el proceso de registro.", exc_info=True)
         raise HTTPException(
             status_code = status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail = "Ha ocurrido un error en el servidor, inténtelo más tarde..."
