@@ -1,38 +1,38 @@
 import logging
+from logging import Logger
 from logging.handlers import RotatingFileHandler
 import sys
 
-LOG_FILE = "app_activity.log"
-LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
-def configure_logger(logger_name: str = 'fastapi-app', level=logging.DEBUG):
+def setup_logging(logger_name: str = "hikari-logger", logger_level: int = logging.DEBUG) -> Logger:
     """
     Configura y devuelve un logger con handlers para consola y archivo.
     """
-    logger = logging.getLogger(logger_name)
-    logger.setLevel(level)
+    logger = logging.getLogger(logger_name) # Instanciamiento del logger
+    logger.setLevel(logger_level) # Nivel de logs
 
-    # Definir el formateador
-    formatter = logging.Formatter(fmt=LOG_FORMAT, datefmt=DATE_FORMAT)
+    # Formateo
+    formatter = logging.Formatter(
+        fmt = "%(asctime)s - %(name)s - %(levelname)s - %(message)s", # Datos
+        datefmt = "%Y-%m-%d %H:%M:%S" # Formato
+    )
 
-    # Si ya tiene handlers, no añadir de nuevo (evita duplicados)
-    if not logger.handlers:
-        # Handler para consola (salida estándar)
-        stream_handler = logging.StreamHandler(sys.stdout)
-        stream_handler.setFormatter(formatter)
-        logger.addHandler(stream_handler)
+    if not logger.handlers: # Prevención de handlers duplicados
+        # Handler de Stream (envío de logs a consola)
+        stream_handler = logging.StreamHandler(sys.stdout) # Creación del handler
+        stream_handler.setFormatter(formatter) # Agregar formateador al handler
+        stream_handler.setLevel(logging.INFO) # Definir nivel de logs para la consola
+        logger.addHandler(stream_handler) # Agregar handler al logger
 
-        # Handler para archivo (con rotación)
-        # Rotará el archivo cuando alcance 10MB, manteniendo 5 archivos de respaldo.
-        file_handler = RotatingFileHandler(
-            LOG_FILE,
-            maxBytes=10 * 1024 * 1024, # 10MB
-            backupCount=5,
-            encoding='utf-8'
-        )
+        # Handler de Files (envío de logs a archivos)
+        file_handler = RotatingFileHandler( # Creación del handler
+                "logs/app_activity.log", # Nombre del archivo
+                maxBytes = 10 * 1024 * 1024, # Tamaño máximo (10MB)
+                backupCount = 5, # Número máximo de archivos para rotación
+                encoding = 'utf-8' # Codificación
+            )
 
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
+        file_handler.setFormatter(formatter) # Agregar formateador al handler
+        logger.addHandler(file_handler) # Agregar handler al logger
 
     return logger
